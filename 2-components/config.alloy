@@ -1,0 +1,46 @@
+// Get our API key from disk.
+//
+// This component has an exported field called "content", holding the content
+// of the file.
+//
+// local.file will watch the file and update its exports any time the
+// file changes.
+local.file "api_key" {
+  filename  = "/var/data/secrets/api-key"
+
+  // Mark this file as sensitive to prevent its value from being shown in the
+  // UI.
+  is_secret = true
+}
+
+// Create a prometheus.remote_write component, which other components can send
+// metrics to.
+//
+// This component exports a "receiver" value, which can be used by other
+// components to send metrics.
+prometheus.remote_write "prod" {
+  endpoint {
+    url = "https://prod:9090/api/v1/write"
+
+    basic_auth {
+      username = "admin"
+
+      // Use the password file to authenticate with the production database.
+      password = local.file.api_key.content
+    }
+  }
+}
+
+// Find Kubernetes pods where we can collect metrics.
+//
+// This component exports a "targets" value, which contains the list of
+// discovered pods.
+discovery.kubernetes "pods" {
+  role = "pod"
+}
+
+// Collect metrics from Kubernetes pods and send them to prod.
+prometheus.scrape "default" {
+  targets    = discovery.kubernetes.pods.targets
+  forward_to = [prometheus.remote_write.prod.receiver]
+}

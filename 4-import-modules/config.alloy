@@ -1,0 +1,23 @@
+// Import our helpers.alloy module, exposing its custom components as
+// helpers.COMPONENT_NAME.
+import.file "helpers" {
+  filename = "helpers.alloy"
+}
+
+loki.source.file "self" {
+  targets = LOG_TARGETS
+
+  // Forward collected logs to the input of our filter.
+  forward_to = [helpers.log_filter.default.filter_input]
+}
+
+helpers.log_filter "default" {
+  // Configure the filter to forward filtered logs to loki.write below.
+  write_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = LOKI_URL
+  }
+}

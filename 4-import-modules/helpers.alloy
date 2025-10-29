@@ -1,0 +1,30 @@
+declare "log_filter" {
+  // argument.write_to is a required argument that specifies where filtered
+  // log lines are sent.
+  //
+  // The value of the argument is retrieved in this file with
+  // argument.write_to.value.
+  argument "write_to" {
+    optional = false
+  }
+
+  // loki.process.filter is our component which executes the filtering,
+  // passing filtered logs to argument.write_to.value.
+  loki.process "filter" {
+    // Drop all debug- and info-level logs.
+    stage.match {
+      selector = `{job!=""} |~ "level=(debug|info)"`
+      action   = "drop"
+    }
+
+    // Send processed logs to our argument.
+    forward_to = argument.write_to.value
+  }
+
+  // export.filter_input exports a value to the module consumer.
+  export "filter_input" {
+    // Expose the receiver of loki.process so the module importer can send
+    // logs to our loki.process component.
+    value = loki.process.filter.receiver
+  }
+}

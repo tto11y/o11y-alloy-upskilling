@@ -1,0 +1,19 @@
+// create a custom component called "add"
+declare "add" {
+    argument "a" { }
+    argument "b" { }
+
+    export "sum" {
+        value = argument.a.value + argument.b.value
+    }
+}
+
+// create an instance of the custom component "add" called "example"
+add "example" {
+    a = 15
+    b = 17
+}
+
+// if you would use the export "sum" in a dependent component
+// it would result to:
+// add.example.sum == 32

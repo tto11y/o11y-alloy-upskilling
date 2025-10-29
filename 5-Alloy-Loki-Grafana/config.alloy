@@ -1,0 +1,63 @@
+// This configuration creates a local.file_match component 
+// named local_files which does the following:
+// + It tells Alloy which files to source.
+// + It checks for new files every 5 seconds.
+local.file_match "local_files" {
+    path_targets = [{"__path__" = "/var/log/*.log"}]
+    sync_period = "5s"
+}
+
+// This configuration creates a loki.source.file component 
+// named log_scrape which does the following:
+loki.source.file "log_scraoe" {
+    // + It connects to the local_files component as its source or target.
+    targets = local.file_match.local_files.targets
+
+    // + It forwards the logs it scrapes 
+    //   to the receiver of another component called filter_logs.
+    forward_to = [loki.process.filter_logs.receiver]
+    
+    // + It provides extra attributes and options 
+    //   to tail the log files from the end so you don’t ingest the entire log file history.
+    tail_from_end = true
+}
+
+
+// The loki.process component allows you to 
+// transform, filter, parse, and enrich log data. 
+// Within this component, you can define one or more processing stages 
+// to specify how you would like to process log entries before they’re stored or forwarded.
+
+// This configuration creates a loki.process component 
+// named filter_logs which does the following:
+// + It receives scraped log entries from the default log_scrape component.
+loki.process "filter_logs" {
+    // + It uses the stage.drop block 
+    //   to define what to drop from the scraped logs.
+    stage.drop {
+        source = ""
+        // + It uses the expression parameter 
+        //   to identify the specific log entries to drop.
+        expression = ".*Connection closed by authenticating user root"
+        // + It uses an optional string label drop_counter_reason 
+        //   to show the reason for dropping the log entries.
+        drop_counter_reason = "noisy"
+    }
+
+    // + It forwards the processed logs to 
+    //   the receiver of another component called grafana_loki.
+    forward_to = [loki.write.grafana_loki.receiver]
+}
+
+// This final component creates a loki.write component named 
+// grafana_loki that points to http://localhost:3100/loki/api/v1/push.
+loki.write "grafana_loki" {
+    endpoint {
+    url = "http://localhost:3100/loki/api/v1/push"
+
+    // basic_auth {
+    //  username = "admin"
+    //  password = "admin"
+    // }
+  }
+}
