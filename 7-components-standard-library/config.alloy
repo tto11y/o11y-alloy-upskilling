@@ -1,0 +1,51 @@
+logging {
+	level  = "debug"
+	format = "logfmt"
+}
+
+prometheus.exporter.unix "localhost" {
+	// This component exposes a lot of metrics by default, 
+	// so we will keep all of the default arguments.
+}
+
+prometheus.exporter.redis "docker_redis" {
+    // there is no need to put http:// in front of the hostname
+	redis_addr = "localhost:6379"
+}
+
+prometheus.scrape "default" {
+	// Setting the scrape interval lower 
+	// to make it faster to be able to see the metrics
+	scrape_interval = "10s"
+
+	// NOTE: concat is deprecated! 
+    //       instead, use array.concat()
+    targets = array.concat(prometheus.exporter.unix.localhost.targets, prometheus.exporter.redis.docker_redis.targets)
+	forward_to = [prometheus.remote_write.local_prom.receiver]
+}
+
+// The local.file component is configured with 
+// a single argument, filename, 
+// which is set by calling the sys.env standard library function 
+// to retrieve the value of the HOME environment variable 
+// and concatenating it with the string "file.txt". 
+// The local.file component has a single export, content, 
+// which contains the contents of the file.
+// local.file "example" {
+//     filename = sys.env("HOME") + "/file.txt"
+// }
+
+prometheus.remote_write "local_prom" {
+	endpoint {
+		// The url attribute is set to the URL 
+		// of the Prometheus remote write endpoint.
+		url = "http://localhost:9090/api/v1/write"
+
+		// basic_auth {
+		//     username = "admin"
+		//     // local.file.example is the fully qualified name 
+		//     // of the component (the component’s type + its label)
+		//     password = local.file.example.content
+		// }
+	}
+}
