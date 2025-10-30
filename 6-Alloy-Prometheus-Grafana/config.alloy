@@ -1,0 +1,49 @@
+prometheus.exporter.unix "local_system" {}
+
+// This configuration creates a prometheus.scrape component 
+// named scrape_metrics which does the following:
+prometheus.scrape "scrape_metrics" {
+    // It connects to the local_system component as its source or target.
+    targets = prometheus.exporter.unix.local_system.targets
+    
+    // It forwards the metrics it scrapes to the receiver of another component called filter_metrics.
+    forward_to = [prometheus.relabel.filter_metrics.receiver]
+
+    // It tells Alloy to scrape metrics every 10 seconds.
+    scrape_interval = "10s"
+}
+
+// The prometheus.relabel component is commonly used to filter Prometheus metrics 
+// or standardize the label set passed to one or more downstream receivers. 
+// You can use this component to rewrite the label set of each metric sent to the receiver. 
+// Within this component, you can define rule blocks to specify how you would like to process metrics 
+// before they’re stored or forwarded.
+
+// This configuration creates a prometheus.relabel component 
+// named filter_metrics which does the following:
+// + It receives scraped metrics from the scrape_metrics component.
+prometheus.relabel "filter_metrics" {
+    rule {
+        // + It tells Alloy to drop metrics that have an "env" label equal to "dev".
+        action = "drop"
+        source_labels = ["env"]
+        regex = "dev"
+    }
+
+    // + It forwards the processed metrics to the receiver of another component called metrics_service.
+    forward_to = [prometheus.remote_write.metrics_service.receiver]
+}
+
+// This final component creates a prometheus.remote_write component 
+// named metrics_service that points to http://localhost:9090/api/v1/write.
+prometheus.remote_write "metrics_service" {
+    endpoint {
+        url = "http://localhost:9090/api/v1/write"
+
+        // basic_auth {
+        //   username = "admin"
+        //   password = "admin"
+        // }
+    }
+}
+
