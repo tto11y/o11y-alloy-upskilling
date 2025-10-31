@@ -1,0 +1,50 @@
+
+local.file_match "tmplogs" {
+    path_targets = [{"__path__" = sys.env("PWD") + "/tmp/alloy-logs/log.log"}]
+}
+
+loki.source.file "scrape" {
+    targets = local.file_match.tmplogs.targets
+
+    forward_to = [loki.relabel.os.receiver]
+    // forward_to = [loki.write.local_loki.receiver]
+}
+
+loki.relabel "os" {
+    forward_to = [loki.process.add_new_label.receiver]
+
+    rule {
+        action = "replace"
+        target_label = "os"
+        replacement = constants.os
+    }
+}
+
+// Transformation: pull some data out of the log message, and turn it into a label
+loki.process "add_new_label" {
+    stage.logfmt {
+        mapping = {
+            "extracted_level" = "level",
+            // this is just to show how to extract labels out of log messages
+            // the message itself should not be added as label in production
+            "extracted_msg" = "msg",
+        }
+    }
+
+    // Add the value of "extracted_level" from the extracted map as a "level" label
+    stage.labels {
+        values = {
+            "level" = "extracted_level",
+            "msg" = "extracted_msg",
+        }
+    }
+
+    // The next link in the chain is the local_loki "receiver" (receives the telemetry)
+    forward_to = [loki.write.local_loki.receiver]
+}
+
+loki.write "local_loki" {
+    endpoint {
+        url = "http://localhost:3100/loki/api/v1/push"
+    }
+}

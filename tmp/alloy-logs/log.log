@@ -1,0 +1,20 @@
+This is a log line
+Hello
+level=debug msg="DEBUG: This is a debug level log!"
+level=warn msg="WARN: This is a warn level log!"
+level=info msg="INFO: This is an info level log!"
+yikesyikes
+helloooooo
+asdad
+level=info msg="INFO: This is an info level log!"
+level=warn msg="WARN: This is a warn level log!"
+level=debug msg="DEBUG: This is a debug level log!"
+level=info msg="INFO: This is an info level log!"
+level=warn msg="WARN: This is a warn level log!"
+level=debug msg="DEBUG: This is a debug level log!"
+level=info msg="INFO: This is an info level log!"
+level=warn msg="WARN: This is a warn level log!"
+level=debug msg="DEBUG: This is a debug level log!"
+level=info msg="INFO: This is an info level log!"
+level=warn msg="WARN: This is a warn level log!"
+level=debug msg="DEBUG: This is a debug level log!"
