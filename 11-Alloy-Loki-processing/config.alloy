@@ -1,0 +1,208 @@
+// The loki.source.api component can receive logs over HTTP. 
+// It can be useful for receiving logs from other Alloys or collectors, 
+// or directly from applications that can send logs over HTTP, 
+// and then processing them centrally.
+loki.source.api "http_listener" {
+	http {
+		listen_address = "127.0.0.1"
+		listen_port    = 9999
+	}
+
+	labels = {source = "api"}
+
+	forward_to = [loki.process.process_logs.receiver]
+}
+
+discovery.docker "containers" {
+	host = "unix:///Users/lucasmuellner/.colima/default/docker.sock"
+}
+
+loki.source.docker "default" {
+	host       = "unix:///Users/lucasmuellner/.colima/default/docker.sock"
+	targets    = discovery.docker.containers.targets
+	labels     = {"app" = "docker"}
+	forward_to = [loki.process.process_docker_logs.receiver]
+}
+
+loki.process "process_logs" {
+
+	// Stage 1
+	stage.json {
+		// The expressions field is the set of key-value pairs 
+		// of JMESPath expressions to run. 
+		// The map key defines the name with which the data is extracted, 
+		// while the map value is the expression used to populate the value.
+		// --
+		// if a map key defined below cannot be found in the log line, 
+		// no extraction from the JSON takes place
+		expressions = {
+			log = "",
+			ts  = "timestamp",
+		}
+
+		// When configuring a JSON stage, 
+		// the source field defines the source of data to parse as JSON. 
+		// By default, this is the log line itself, 
+		// but it can also be a previously extracted value.
+		// source = ""
+	}
+
+	// Stage 2
+	stage.timestamp {
+		source = "ts"
+		format = "RFC3339"
+	}
+
+	// Stage 3
+	stage.json {
+		// the argument 'source' must match a map key 
+		// that was previously extracted from the log line.
+		// otherwise, the expressions below are not executed
+		source = "log"
+
+		expressions = {
+			// extracts a JSON property 'is_secret' from the log line
+			// with "" its value is set to the value assigned to 'is_secret' in the log line itself
+			// e.g.,
+			// {"log":"log message\n","extra":"{\"user\":\"alloy\"}", "is_secret":"Hello testy"}
+			// resulting JSON property: is_secret = "Hello testy"
+			is_secret = "",
+
+			// extracts a JSON property 'level' from the log line
+			// with "" its value is set to the value assigned to 'level' in the log line itself
+			level = "",
+
+			// extracts a JSON property 'log_line' from the log line
+			// with "message" its value is set to the value assigned to 'message' in the log line itself
+			log_line = "message",
+		}
+	}
+
+	// Stage 4
+	stage.drop {
+		// drop secrets from the log line before they are sent to Loki
+		source = "is_secret"
+		value  = "true"
+	}
+
+	// Stage 5
+	stage.labels {
+		values = {
+			// Sets up a 'level' label, 
+			// based on the 'level' extracted value from the json stage above
+			level = "",
+		}
+	}
+
+	// Stage 6
+	// The stage.output inner block configures a processing stage 
+	// that reads from the extracted map 
+	// and changes the content of the log entry 
+	// that’s forwarded to the next component.
+	stage.output {
+		// the JSON property with key log_line will be the new log line / message
+		// --
+		// if the property key assigned to argument 'source' cannot be found in the extracted map (JSON),
+		// the log line remains unchanged (i.e., it's the same message as before)
+		source = "log_line"
+	}
+
+	// This stage adds static values to the labels on the log line
+	stage.static_labels {
+		values = {
+			source = "demo-api",
+		}
+	}
+
+	forward_to = [loki.write.local_loki.receiver]
+}
+
+loki.process "process_docker_logs" {
+	stage.logfmt {
+		mapping = {
+			"level"     = "",
+			"timestamp"        = "ts",
+			"caller"    = "",
+			"component" = "",
+			"path"      = "",
+			"msg"       = "",
+			"details"   = "",
+			"org_id"    = "",
+            "service_name" = "",
+		}
+	}
+
+    // todo 
+    //  1 why is this stage not applied??
+    //  2 can I somehow print the content that passes through Alloy? to make troubleshooting easier??
+
+	stage.timestamp {
+		source = "ts"
+		format = "RFC3339"
+	}
+
+	stage.json {
+		// the argument 'source' must match a map key 
+		// that was previously extracted from the log line.
+		// otherwise, the expressions below are not executed
+		source = "logii"
+
+		expressions = {
+			// extracts a JSON property 'is_secret' from the log line
+			// with "" its value is set to the value assigned to 'is_secret' in the log line itself
+			// e.g.,
+			// {"log":"log message\n","extra":"{\"user\":\"alloy\"}", "is_secret":"Hello testy"}
+			// resulting JSON property: is_secret = "Hello testy"
+			is_secret = "",
+
+			// extracts a JSON property 'level' from the log line
+			// with "" its value is set to the value assigned to 'level' in the log line itself
+			level = "",
+
+			// extracts a JSON property 'log_line' from the log line
+			// with "message" its value is set to the value assigned to 'message' in the log line itself
+			log_line = "message",
+			caller   = "",
+			method   = "",
+			err      = "",
+			org_id   = "",
+		}
+	}
+
+	stage.labels {
+		values = {
+			level     = "",             // Promote 'level' (value: "error")
+			component = "",             // Promote 'component' (value: "ingester")
+			app       = "",             // Promote 'app' (value: "docker")
+			service   = "service_name", // Promote 'service_name' and rename it to 'service'
+		}
+	}
+
+	// Stage 6
+	// The stage.output inner block configures a processing stage 
+	// that reads from the extracted map 
+	// and changes the content of the log entry 
+	// that’s forwarded to the next component.
+	stage.output {
+		// the JSON property with key log_line will be the new log line / message
+		// --
+		// if the property key assigned to argument 'source' cannot be found in the extracted map (JSON),
+		// the log line remains unchanged (i.e., it's the same message as before)
+		source = "msg"
+	}
+
+	// This stage adds static values to the labels on the log line
+	stage.static_labels {
+		values = {
+			source = "dockerii",
+		}
+	}
+
+	forward_to = [loki.write.local_loki.receiver]
+}
+
+loki.write "local_loki" {
+	endpoint {
+		url = "http://localhost:3100/loki/api/v1/push"
+	}
+}
