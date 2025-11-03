@@ -1,9 +1,15 @@
 services:
   loki:
     image: grafana/loki:3.0.0
+    command: -config.file=/etc/loki/local-config.yaml
     ports:
       - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
+    environment:
+      - https_proxy=
+      - HTTPS_PROXY=
+      - http_proxy=
+      - HTTP_PROXY=
+
   prometheus:
     image: prom/prometheus:v2.47.0
     command:
@@ -11,11 +17,14 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
-  grafana:
     environment:
-      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - https_proxy=
+      - HTTPS_PROXY=
+      - http_proxy=
+      - HTTP_PROXY=
+
+  grafana:
+    image: grafana/grafana:11.0.0
     entrypoint:
       - sh
       - -euc
@@ -43,7 +52,14 @@ services:
           editable: false
         EOF
         /run.sh
-    image: grafana/grafana:11.0.0
     ports:
       - "3000:3000"
+    environment:
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - https_proxy=
+      - HTTPS_PROXY=
+      - http_proxy=
+      - HTTP_PROXY=
 
