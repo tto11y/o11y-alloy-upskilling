@@ -118,8 +118,14 @@ loki.process "process_logs" {
 }
 
 loki.process "process_docker_logs" {
+
+    // docker uses logfmt (log format) for logs that's why we use the stage 'logfmt'
+    // --
+    // this stage extracts values for each key that is listed below (e.g., timestamp) from a log line and stores it in a map (key-value pairs)
+    // if a key is not present in a log line, Alloy simply ignores the mapping
 	stage.logfmt {
 		mapping = {
+            "user" = "",
 			"level"     = "",
 			"timestamp"        = "ts",
 			"caller"    = "",
@@ -129,12 +135,13 @@ loki.process "process_docker_logs" {
 			"details"   = "",
 			"org_id"    = "",
             "service_name" = "",
+            "query_type" = "",
+            "latency" = "",
+            "traceID" = "",
+            "status" = "",
+            "duration" = "",
 		}
 	}
-
-    // todo 
-    //  1 why is this stage not applied??
-    //  2 can I somehow print the content that passes through Alloy? to make troubleshooting easier??
 
 	stage.timestamp {
 		source = "ts"
@@ -175,6 +182,15 @@ loki.process "process_docker_logs" {
 			component = "",             // Promote 'component' (value: "ingester")
 			app       = "",             // Promote 'app' (value: "docker")
 			service   = "service_name", // Promote 'service_name' and rename it to 'service'
+            org_id    = "",
+            traceID = "",
+            query_type = "",
+            latency = "",
+            caller = "",
+            path = "",
+            timestamp = "",
+            status = "",
+            duration = "",
 		}
 	}
 
@@ -194,7 +210,7 @@ loki.process "process_docker_logs" {
 	// This stage adds static values to the labels on the log line
 	stage.static_labels {
 		values = {
-			source = "dockerii",
+			source = "alloy_is_fun",
 		}
 	}
 
