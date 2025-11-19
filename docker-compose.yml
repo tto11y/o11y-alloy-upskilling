@@ -3,6 +3,9 @@ services:
     image: grafana/loki:3.0.0
     command: -config.file=/etc/loki/local-config.yaml
     ports:
+      # the Loki receiver endpoints are reachable via 
+      # http://localhost:3100/loki/api/v1/push
+      # http://localhost:3100/otlp
       - "3100:3100"
     environment:
       - https_proxy=
@@ -16,7 +19,25 @@ services:
       - --web.enable-remote-write-receiver
       - --config.file=/etc/prometheus/prometheus.yml
     ports:
+      # the remote_write endpoint is reachable via http://localhost:9090/api/v1/write"
       - "9090:9090"
+    environment:
+      - https_proxy=
+      - HTTPS_PROXY=
+      - http_proxy=
+      - HTTP_PROXY=
+  
+  tempo:
+    image: grafana/tempo:2.9.0
+    command: "-target=all -config.file=/etc/tempo.yaml"
+    # Tempo needs a configuration file to start
+    volumes:
+      - ./12-Alloy-OTLP-telemetry-pipelines/tempo-distributed/tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "3200:3200" # for the querier (Grafana frontend)
+      - "9411:9411"
+      - "4318:4318" # OTLP HTTP => http://localhost:4318
+      - "4317:4317" # OTLP gRPC => http://localhost:4317
     environment:
       - https_proxy=
       - HTTPS_PROXY=
@@ -48,6 +69,14 @@ services:
           url: http://prometheus:9090
           basicAuth: false
           isDefault: true
+          version: 1
+          editable: false
+        - name: Tempo
+          access: proxy
+          type: tempo
+          url: http://tempo:3200
+          basicAuth: false
+          isDefault: false
           version: 1
           editable: false
         EOF
