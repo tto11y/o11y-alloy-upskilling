@@ -37,7 +37,7 @@ loki.write "local" {
     }
 }
 
-// ============================= receiver
+// ============================= OTLP receiver
 otelcol.receiver.otlp "default" {
     grpc {
 	    endpoint = "0.0.0.0:4317"
@@ -54,7 +54,7 @@ otelcol.receiver.otlp "default" {
 	}
 }
 
-// ============================= processor
+// ============================= OTLP processor
 otelcol.processor.batch "default" {
 	send_batch_size     = 2000
 	send_batch_max_size = 4000
@@ -67,14 +67,14 @@ otelcol.processor.batch "default" {
 	}
 }
 
-// ============================= converter
+// ============================= OTLP converter
 // metrics in OTLP format must be converted 
 // into Prometheus format before they can be pushed to a Prometheus remote_write endpoint
 otelcol.exporter.prometheus "prom_metrics" {
 	forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
 
-// ============================= exporter
+// ============================= Prometheus remote write
 prometheus.remote_write "metrics_service" {
     endpoint {
         url = "http://localhost:9090/api/v1/write"
@@ -86,6 +86,7 @@ prometheus.remote_write "metrics_service" {
     }
 }
 
+// ============================= OTLP exporter
 otelcol.exporter.otlphttp "logs" {
 	client {
 		endpoint = json_path(local.file.endpoints.content, ".logs.url_otlp")[0]
