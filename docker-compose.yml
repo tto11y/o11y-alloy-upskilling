@@ -111,4 +111,11 @@ services:
       - "12345:12345" # for debug frontend
       - "4318:4318" # OTLP HTTP => http://localhost:4318
       - "4317:4317" # OTLP gRPC => http://localhost:4317
+    # to prevent the environment variables http_proxy and https_proxy from interfering in the HTTP communication,
+    # we unset it manually
+    environment:
+      - https_proxy=
+      - HTTPS_PROXY=
+      - http_proxy=
+      - HTTP_PROXY=
 
