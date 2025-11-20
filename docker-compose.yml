@@ -2,11 +2,11 @@ services:
   loki:
     image: grafana/loki:3.0.0
     command: -config.file=/etc/loki/local-config.yaml
-    ports:
+    #ports:
       # the Loki receiver endpoints are reachable via 
       # http://localhost:3100/loki/api/v1/push
       # http://localhost:3100/otlp
-      - "3100:3100"
+      #- "3100:3100"
     # to prevent the environment variables http_proxy and https_proxy from interfering in the HTTP communication,
     # we unset it manually
     environment:
@@ -20,9 +20,9 @@ services:
     command:
       - --web.enable-remote-write-receiver
       - --config.file=/etc/prometheus/prometheus.yml
-    ports:
+    #ports:
       # the remote_write endpoint is reachable via http://localhost:9090/api/v1/write"
-      - "9090:9090"
+      #- "9090:9090"
     # to prevent the environment variables http_proxy and https_proxy from interfering in the HTTP communication,
     # we unset it manually
     environment:
@@ -38,11 +38,11 @@ services:
     # Tempo needs a configuration file to start
     volumes:
       - ./12-Alloy-OTLP-telemetry-pipelines/tempo-distributed/tempo.yaml:/etc/tempo.yaml
-    ports:
-      - "3200:3200" # for the querier (Grafana frontend)
-      - "9411:9411"
-      - "4318:4318" # OTLP HTTP => http://localhost:4318
-      - "4317:4317" # OTLP gRPC => http://localhost:4317
+    #ports:
+      #- "3200:3200" # for the querier (Grafana frontend)
+      #- "9411:9411"
+      #- "4318:4318" # OTLP HTTP => http://localhost:4318
+      #- "4317:4317" # OTLP gRPC => http://localhost:4317
     # to prevent the environment variables http_proxy and https_proxy from interfering in the HTTP communication,
     # we unset it manually
     environment:
@@ -100,4 +100,15 @@ services:
       - HTTPS_PROXY=
       - http_proxy=
       - HTTP_PROXY=
+
+  alloy:
+    image: grafana/alloy:v1.11.1
+    command: "run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy"
+    volumes:
+      - ./12-Alloy-OTLP-telemetry-pipelines/config.alloy:/etc/alloy/config.alloy
+      - ./12-Alloy-OTLP-telemetry-pipelines/endpoints.json:/etc/alloy/endpoints.json
+    ports:
+      - "12345:12345" # for debug frontend
+      - "4318:4318" # OTLP HTTP => http://localhost:4318
+      - "4317:4317" # OTLP gRPC => http://localhost:4317
 

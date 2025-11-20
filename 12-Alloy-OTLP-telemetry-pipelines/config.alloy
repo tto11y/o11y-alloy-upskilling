@@ -1,7 +1,7 @@
 // ============================= endpoints
 local.file "endpoints" {
-    // define endpoints & credentials
-    filename = "./12-Alloy-Loki-log-scraping/endpoints.json"
+    // define endpoints and credentials
+    filename = "/etc/alloy/endpoints.json"
 }
 
 // ============================= o11ycol logs
@@ -27,7 +27,7 @@ loki.process "o11ycol" {
 
 loki.write "local" {
 	endpoint {
-        url = "http://localhost:3100/loki/api/v1/push"
+	    url = json_path(local.file.endpoints.content, ".logs.url")[0]
 
         // The basic auth credentials for the Loki instance.
         // basic_auth {
@@ -77,7 +77,7 @@ otelcol.exporter.prometheus "prom_metrics" {
 // ============================= Prometheus remote write
 prometheus.remote_write "metrics_service" {
     endpoint {
-        url = "http://localhost:9090/api/v1/write"
+        url = json_path(local.file.endpoints.content, ".metrics_prom.url")[0]
 
         // basic_auth {
         //   username = "admin"
